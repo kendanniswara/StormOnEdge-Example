@@ -1,4 +1,4 @@
-package extractor;
+package performance_test;
 
 import java.util.Iterator;
 import java.util.Map;
