@@ -37,7 +37,6 @@ import backtype.storm.generated.Nimbus;
 import backtype.storm.generated.KillOptions;
 import backtype.storm.generated.ClusterSummary;
 import backtype.storm.generated.Nimbus.Client;
-import backtype.storm.generated.NotAliveException;
 import backtype.storm.generated.SupervisorSummary;
 import backtype.storm.generated.TopologySummary;
 import backtype.storm.generated.TopologyInfo;
@@ -303,8 +302,8 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
             builder.setBolt("messageBoltLocal2_1", new SOLBolt(), 4).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
             builder.setBolt("messageBoltLocal2_LocalResult", new SOLFinalBolt(), 4).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
             
-            builder.setBolt("messageBoltGlobal1_1A", new SOLBolt(), 4).shuffleGrouping("messageBoltLocal1_1B").addConfiguration("group-name", "Global1");
-            builder.setBolt("messageBoltGlobal1_1B", new SOLBolt(), 4).shuffleGrouping("messageBoltLocal2_1B").addConfiguration("group-name", "Global1");
+            builder.setBolt("messageBoltGlobal1_1A", new SOLBolt(), 4).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
+            builder.setBolt("messageBoltGlobal1_1B", new SOLBolt(), 4).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
             builder.setBolt("messageBoltGlobal1_FG", new SOLBolt(), 2)
             	.fieldsGrouping("messageBoltGlobal1_1A", new Fields("fieldValue"))
             	.fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
