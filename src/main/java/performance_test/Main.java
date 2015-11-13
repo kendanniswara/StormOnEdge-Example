@@ -40,9 +40,6 @@ import backtype.storm.generated.ExecutorStats;
 
 import java.util.HashMap;
 
-import performance_test.SOLBolt;
-import performance_test.SOLSpout;
-
 public class Main {
   private static final Log LOG = LogFactory.getLog(Main.class);
 
@@ -250,13 +247,13 @@ public class Main {
         TopologyBuilder builder = new TopologyBuilder();
         LOG.info("Adding in "+_spoutParallel+" spouts");
         builder.setSpout("messageSpout", 
-            new SOLSpout(_messageSize, _ackEnabled), _spoutParallel);
+            new SOESpout(_messageSize, _ackEnabled), _spoutParallel);
         LOG.info("Adding in "+_boltParallel+" bolts");
-        builder.setBolt("messageBolt1", new SOLBolt(), _boltParallel)
+        builder.setBolt("messageBolt1", new SOEBolt(), _boltParallel)
             .shuffleGrouping("messageSpout");
         for (int levelNum = 2; levelNum <= _numLevels; levelNum++) {
           LOG.info("Adding in "+_boltParallel+" bolts at level "+levelNum);
-          builder.setBolt("messageBolt"+levelNum, new SOLBolt(), _boltParallel)
+          builder.setBolt("messageBolt"+levelNum, new SOEBolt(), _boltParallel)
               .shuffleGrouping("messageBolt"+(levelNum - 1));
         }
 

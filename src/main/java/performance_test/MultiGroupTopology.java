@@ -24,8 +24,6 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
-import zoneGrouping.ZoneFieldsGrouping;
-import zoneGrouping.ZoneShuffleGrouping;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
@@ -256,67 +254,67 @@ public class MultiGroupTopology {
             
             TopologyBuilder builder = new TopologyBuilder();
             
-            builder.setSpout("messageSpoutA", new SOLSpout(_messageSize, _ackEnabled), 2);
-            builder.setSpout("messageSpoutB", new SOLSpout(_messageSize, _ackEnabled), 2);
-            builder.setSpout("messageSpoutC", new SOLSpout(_messageSize, _ackEnabled), 2);
+            builder.setSpout("messageSpoutA", new SOESpout(_messageSize, _ackEnabled), 2);
+            builder.setSpout("messageSpoutB", new SOESpout(_messageSize, _ackEnabled), 2);
+            builder.setSpout("messageSpoutC", new SOESpout(_messageSize, _ackEnabled), 2);
                        
-            builder.setBolt("messageBoltSG_A", new SOLBolt(), 2).shuffleGrouping("messageSpoutA");
-            builder.setBolt("messageBoltSG_B", new SOLBolt(), 2).shuffleGrouping("messageSpoutB");
-            builder.setBolt("messageBoltSG_C", new SOLBolt(), 2).shuffleGrouping("messageSpoutC");
+            builder.setBolt("messageBoltSG_A", new SOEBolt(), 2).shuffleGrouping("messageSpoutA");
+            builder.setBolt("messageBoltSG_B", new SOEBolt(), 2).shuffleGrouping("messageSpoutB");
+            builder.setBolt("messageBoltSG_C", new SOEBolt(), 2).shuffleGrouping("messageSpoutC");
             
-            builder.setBolt("messageBoltFG_A", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
-            builder.setBolt("messageBoltFG_B", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_B", new Fields("fieldValue"));
-            builder.setBolt("messageBoltFG_C", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_C", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_A", new SOEBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_B", new SOEBolt(), 2).fieldsGrouping("messageBoltSG_B", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_C", new SOEBolt(), 2).fieldsGrouping("messageBoltSG_C", new Fields("fieldValue"));
             
-            builder.setBolt("messageBoltLocalResultA", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltFG_A");
-            builder.setBolt("messageBoltLocalResultB", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltFG_B");
-            builder.setBolt("messageBoltLocalResultC", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltFG_C");
+            builder.setBolt("messageBoltLocalResultA", new SOEFinalBolt(), 2).shuffleGrouping("messageBoltFG_A");
+            builder.setBolt("messageBoltLocalResultB", new SOEFinalBolt(), 2).shuffleGrouping("messageBoltFG_B");
+            builder.setBolt("messageBoltLocalResultC", new SOEFinalBolt(), 2).shuffleGrouping("messageBoltFG_C");
             
-            builder.setBolt("messageBoltLocalAggregatorResult", new SOLFinalBolt(), 2)
+            builder.setBolt("messageBoltLocalAggregatorResult", new SOEFinalBolt(), 2)
         		.shuffleGrouping("messageBoltFG_A")
         		.shuffleGrouping("messageBoltFG_B")
         		.shuffleGrouping("messageBoltFG_C");
             
-            builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
+            builder.setBolt("messageBoltSG2", new SOEBolt(), 4)
             	.shuffleGrouping("messageBoltFG_A")
         		.shuffleGrouping("messageBoltFG_B")
         		.shuffleGrouping("messageBoltFG_C");
             
-            builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
+            builder.setBolt("messageBoltFG2", new SOEBolt(), 4)
             	.fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
             
-            builder.setBolt("messageBoltGlobalResult", new SOLFinalBolt(), 2)
+            builder.setBolt("messageBoltGlobalResult", new SOEFinalBolt(), 2)
             	.shuffleGrouping("messageBoltFG2");
             
             /*****************************************************
              
-            builder.setSpout("messageSpoutA", new SOLSpout(_messageSize, _ackEnabled), 6);
+            builder.setSpout("messageSpoutA", new SOESpout(_messageSize, _ackEnabled), 6);
                        
-            builder.setBolt("messageBoltSG_A", new SOLBolt(), 6)
+            builder.setBolt("messageBoltSG_A", new SOEBolt(), 6)
             	//.shuffleGrouping("messageSpoutA");
             	.customGrouping("messageSpoutA", new ZoneShuffleGrouping());
             
-            builder.setBolt("messageBoltFG_A", new SOLBolt(), 6)
+            builder.setBolt("messageBoltFG_A", new SOEBolt(), 6)
             	//.fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
             	.customGrouping("messageBoltSG_A", new ZoneFieldsGrouping(new Fields("fieldValue")));
             
-            //builder.setBolt("messageBoltFG_B", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
-            //builder.setBolt("messageBoltFG_C", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            //builder.setBolt("messageBoltFG_B", new SOEBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            //builder.setBolt("messageBoltFG_C", new SOEBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
             
-            builder.setBolt("messageBoltLocalResult", new SOLFinalBolt(), 6)
+            builder.setBolt("messageBoltLocalResult", new SOEFinalBolt(), 6)
     		.customGrouping("messageBoltFG_A", new ZoneShuffleGrouping());
             
-            builder.setBolt("messageBoltLocalAggregatorResult", new SOLFinalBolt(), 2)
+            builder.setBolt("messageBoltLocalAggregatorResult", new SOEFinalBolt(), 2)
         		.shuffleGrouping("messageBoltFG_A");
             
-            builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
+            builder.setBolt("messageBoltSG2", new SOEBolt(), 4)
             	.shuffleGrouping("messageBoltFG_A");
             
-            builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
+            builder.setBolt("messageBoltFG2", new SOEBolt(), 4)
             	.fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
             	//.customGrouping("messageBoltSG2", new ZoneFieldsGrouping(new Fields("fieldValue")));
             
-            builder.setBolt("messageBoltGlobalResult", new SOLFinalBolt(), 2)
+            builder.setBolt("messageBoltGlobalResult", new SOEFinalBolt(), 2)
             	.globalGrouping("messageBoltFG2");
             	
              *****************************************************/
