@@ -1,4 +1,4 @@
-package StreamingCluster.util;
+package KMeansStreaming.util;
 
 /**
  * Copyright 2013-2015 Pierre Merienne

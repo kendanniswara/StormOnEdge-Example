@@ -1,4 +1,4 @@
-package StreamingCluster;
+package KMeansStreaming;
 
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
@@ -28,7 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
-import performance_test.*;
+import NetworkEvaluation.*;
 import zoneGrouping.ZoneShuffleGrouping;
 
 import java.util.HashMap;
@@ -51,7 +51,7 @@ public class ClusteringTopology {
 
   @Option(name="--ClusterGroup", aliases={"--clusterGroup"}, metaVar="CLUSTERGROUP",
           usage="Number of cluster")
-  private int _clusterGroup = 3;
+  private int _clusterGroup = 4;
 
   @Option(name="--localTaskGroup", aliases={"--localGroup"}, metaVar="LOCALGROUP",
           usage="number of bolts to run local TaskGroup")
@@ -276,21 +276,26 @@ public boolean metrics(Client client, long now, MetricsState state, String messa
         int totalLocalBolt = _boltLocalParallel * _localGroup;
         int totalLocalResultBolt = _localGroup;
         int totalGlobalBolt = _boltGlobalParallel;
+        int totalGlobalResultBolt = 1;
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("KmeansSpout", new clusteringSpout(_ackEnabled), totalSpout).addConfiguration("group-name", "local1");
+        builder.setSpout("KmeansSpout", new ClusteringSpout(_ackEnabled), totalSpout).addConfiguration("group-name", "local1");
 
-        builder.setBolt("ClusteringBoltLocal", new clusteringBolt(_clusterGroup,_ackEnabled), totalLocalBolt)
+        builder.setBolt("ClusteringBoltLocal", new ClusteringBoltLocal(_clusterGroup,_ackEnabled), totalLocalBolt)
                 .customGrouping("KmeansSpout", new ZoneShuffleGrouping())
                 .addConfiguration("group-name", "local1");
 
-        builder.setBolt("resultBoltLocal", new localResultBolt(_ackEnabled), totalLocalResultBolt)
+        builder.setBolt("resultBoltLocal", new ResultBolt(_ackEnabled), totalLocalResultBolt)
                 .customGrouping("ClusteringBoltLocal", new ZoneShuffleGrouping())
                 .addConfiguration("group-name", "local1");
 
-        builder.setBolt("ClusteringBoltGlobal", new clusteringBolt(_clusterGroup,_ackEnabled), totalGlobalBolt)
+        builder.setBolt("ClusteringBoltGlobal", new ClusteringBoltGlobal(_clusterGroup,_ackEnabled), totalGlobalBolt)
                 .customGrouping("ClusteringBoltLocal", new ZoneShuffleGrouping())
+                .addConfiguration("group-name", "global1");
+
+        builder.setBolt("resultBoltGlobal", new ResultBolt(_ackEnabled), totalGlobalResultBolt)
+                .shuffleGrouping("ClusteringBoltGlobal")
                 .addConfiguration("group-name", "global1");
 
 

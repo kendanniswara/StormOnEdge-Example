@@ -1,4 +1,4 @@
-package StreamingCluster.util;
+package KMeansStreaming.util;
 
 /**
  * Created by ken on 11/18/2015.

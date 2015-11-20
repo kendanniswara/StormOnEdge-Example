@@ -1,17 +1,17 @@
-package StreamingCluster;
+package KMeansStreaming;
 
-import StreamingCluster.util.Centroid;
-import StreamingCluster.util.MathUtil;
+import KMeansStreaming.util.Centroid;
+import KMeansStreaming.util.MathUtil;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 /**
- * Created by ken on 11/16/2015.
+ * Created by ken on 11/18/2015.
  */
-public class FurthestPointKMeans implements Clusterer, Serializable {
+@SuppressWarnings("Duplicates")
+public class ParallelGuessingKMeans implements Clusterer {
 
   private Integer nbCluster;
   private double radius;
@@ -21,7 +21,7 @@ public class FurthestPointKMeans implements Clusterer, Serializable {
   private ArrayList<Centroid> centroids = new ArrayList<Centroid>();
 
 
-  public FurthestPointKMeans(Integer clusterSize, double errorRate) {
+  public ParallelGuessingKMeans(Integer clusterSize, double errorRate) {
     nbCluster = clusterSize;
     error = errorRate;
     radius = 0.0;
@@ -36,7 +36,7 @@ public class FurthestPointKMeans implements Clusterer, Serializable {
     }
   }
 
-  public boolean update(double[] feature) {
+  public boolean update(double[] feature, String location) {
     boolean newCentroid = false;
     this.features.add(feature);
 
@@ -97,6 +97,7 @@ public class FurthestPointKMeans implements Clusterer, Serializable {
   protected void initCentroids() {
 
     List<double[]> computeFeatures = copyFromFeatures();
+    double bound = Math.floor(distanceRatio(computeFeatures));
 
     Random random = new Random();
 
@@ -113,21 +114,7 @@ public class FurthestPointKMeans implements Clusterer, Serializable {
     calculateRadius();
   }
 
-  protected int furthestFeature(List<double[]> ncFeatures) {
-    int maxIdx = Integer.MAX_VALUE;
-    double MaxDistance = 0;
-    for(int i = 0; i < ncFeatures.size() ; i++) {
-      double distance = 0.0;
-
-      for(Centroid c : centroids)
-        distance += MathUtil.euclideanDistance(ncFeatures.get(i),c.feature);
-
-      if(distance > MaxDistance) {
-        MaxDistance = distance;
-        maxIdx = i;
-      }
-    }
-    return maxIdx;
+  private int furthestFeature(List<double[]> computeFeatures) {return 0;
   }
 
   protected Integer nearestCentroid(double[] feature) {
@@ -145,6 +132,23 @@ public class FurthestPointKMeans implements Clusterer, Serializable {
     }
 
     return nearestCentroidKey;
+  }
+
+  private double distanceRatio(List<double[]> features)
+  {
+    double maxDistance = Double.MIN_VALUE;
+    double minDistance = Double.MAX_VALUE;
+
+    for(int idx1 = 0; idx1 < features.size(); idx1++)
+      for(int idx2 = idx1 + 1; idx2 < features.size(); idx2++) {
+        double dist = MathUtil.euclideanDistance(features.get(idx1), features.get(idx2));
+        if(dist < minDistance)
+          minDistance = dist;
+        if(dist > maxDistance)
+          maxDistance = dist;
+      }
+
+    return maxDistance / minDistance;
   }
 
   private void calculateRadius() {
@@ -175,3 +179,5 @@ public class FurthestPointKMeans implements Clusterer, Serializable {
     return copyFeatures;
   }
 }
+
+

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package StreamingCluster;
+package KMeansStreaming;
 import java.util.List;
 
 public interface Clusterer {
@@ -34,15 +34,7 @@ public interface Clusterer {
    * @param features
    * @return
    */
-  boolean update(double[] features);
-
-  /**
-   * Predicts the cluster memberships for a given instance.
-   *
-   * @param features
-   * @return
-   */
-  double[] distribution(double[] features);
+  boolean update(double[] features, String location);
 
   /**
    * Returns learned clusters as a {@link List} of feature's means
