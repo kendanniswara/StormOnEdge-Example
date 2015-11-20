@@ -1,4 +1,4 @@
-package performance_test;
+package NetworkEvaluation;
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
  *
@@ -32,13 +32,8 @@ public class SOEBolt extends BaseRichBolt {
 	 */
 	private static final long serialVersionUID = -7693495734028013915L;
 	
-private OutputCollector _collector;
+  private OutputCollector _collector;
   private Random rand;
-
-  public SOEBolt() {
-    //Empty
-  }
-
   
   public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
     _collector = collector;

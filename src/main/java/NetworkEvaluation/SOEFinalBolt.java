@@ -1,4 +1,4 @@
-package performance_test;
+package NetworkEvaluation;
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
  *
@@ -16,7 +16,6 @@ package performance_test;
  */
 
 import java.util.Map;
-import java.util.Random;
 
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
