@@ -24,7 +24,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
-import zoneGrouping.ZoneShuffleGrouping;
+import grouping.stream.*;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
@@ -43,6 +43,7 @@ import backtype.storm.generated.ExecutorStats;
 
 import java.util.HashMap;
 
+@SuppressWarnings("Duplicates")
 public class LocalGlobalGroupTopology {
   private static final Log LOG = LogFactory.getLog(Main.class);
 
@@ -62,22 +63,30 @@ public class LocalGlobalGroupTopology {
   @Option(name="--numTopologies", aliases={"-n"}, metaVar="TOPOLOGIES",
       usage="number of topologies to run in parallel")
   private int _numTopologies = 1;
- 
-   @Option(name="--numLevels", aliases={"-l"}, metaVar="LEVELS",
-      usage="number of levels of bolts per topolgy")
-  private int _numLevels = 1;
+
+  @Option(name="--ClusterGroup", aliases={"--clusterGroup"}, metaVar="CLUSTERGROUP",
+          usage="Number of cluster")
+  private int _clusterGroup = 4;
+
+  @Option(name="--localTaskGroup", aliases={"--localGroup"}, metaVar="LOCALGROUP",
+          usage="number of initial local TaskGroup")
+  private int _localGroup = 9;
 
   @Option(name="--spoutParallel", aliases={"--spout"}, metaVar="SPOUT",
-      usage="number of spouts to run in parallel")
-  private int _spoutParallel = 3;
-  
-  @Option(name="--boltParallel", aliases={"--bolt"}, metaVar="BOLT",
-      usage="number of bolts to run in parallel")
-  private int _boltParallel = 3;
+          usage="number of spouts to run local TaskGroup")
+  private int _spoutParallel = 2;
+
+  @Option(name="--boltParallelLocal", aliases={"--boltLocal"}, metaVar="BOLTLOCAL",
+          usage="number of bolts to run local TaskGroup")
+  private int _boltLocalParallel = 2;
+
+  @Option(name="--boltParallelGlobal", aliases={"--boltGlobal"}, metaVar="BOLTGLOBAL",
+          usage="number of bolts to run global TaskGroup")
+  private int _boltGlobalParallel = 2;
   
   @Option(name="--numWorkers", aliases={"--workers"}, metaVar="WORKERS",
       usage="number of workers to use per topology")
-  private int _numWorkers = 3;
+  private int _numWorkers = 50;
   
   @Option(name="--ackers", metaVar="ACKERS", 
       usage="number of acker bolts to launch per topology")
@@ -104,7 +113,7 @@ public class LocalGlobalGroupTopology {
   
   @Option(name="--sampleRateSec", aliases={"--sampleRate"}, metaVar="SAMPLE",
 	      usage="Sample rate for metrics (0-1).")
-	  private double _sampleRate = 0.1;
+	  private double _sampleRate = 0.3;
 
   private static class MetricsState {
     long transferred = 0;
@@ -242,7 +251,7 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
     //double throughput = (transferredDiff == 0 || time == 0) ? 0.0 : (transferredDiff * size)/(1024.0 * 1024.0)/(time/1000.0);
     //System.out.println(message+"\t"+numTopologies+"\t"+totalSlots+"\t"+totalUsedSlots+"\t"+totalExecutors+"\t"+executorsWithMetrics+"\t"+now+"\t"+time+"\t"+transferredDiff+"\t"+throughput);
 	System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time+",NOLIMIT");
-    if ("WAITING".equals(message)) {
+    if("WAITING".equals(message)) {
       //System.err.println(" !("+totalUsedSlots+" > 0 && "+slotsUsedDiff+" == 0 && "+totalExecutors+" > 0 && "+executorsWithMetrics+" >= "+totalExecutors+")");
     }
     return !(totalUsedSlots > 0 && slotsUsedDiff == 0 && totalExecutors > 0 && executorsWithMetrics >= totalExecutors);
@@ -283,41 +292,45 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
 
     try {    	
     	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
-            
-            TopologyBuilder builder = new TopologyBuilder();
-            
-            builder.setSpout("messageSpoutLocal1", new SOESpout(_messageSize, _ackEnabled), 4).addConfiguration("group-name", "Local1");
-//            builder.setBolt("messageBoltLocal1_1", new SOEBolt(), 4).shuffleGrouping("messageSpoutLocal1").addConfiguration("group-name", "Local1");
-//            builder.setBolt("messageBoltLocal1_1B", new SOEBolt(), 4).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Local1");
-//            builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), 12).shuffleGrouping("messageBoltLocal1_1B").addConfiguration("group-name", "Local1");
-            builder.setBolt("messageBoltLocal1_1", new SOEBolt(), 4).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
-            builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), 4).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
-            
-            builder.setSpout("messageSpoutLocal2", new SOESpout(_messageSize, _ackEnabled), 4).addConfiguration("group-name", "Local2");
-//            builder.setBolt("messageBoltLocal2_1", new SOEBolt(), 14).shuffleGrouping("messageSpoutLocal2").addConfiguration("group-name", "Local2");
-//            builder.setBolt("messageBoltLocal2_1B", new SOEBolt(), 14).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Local2");
-//            builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), 14).shuffleGrouping("messageBoltLocal2_1B").addConfiguration("group-name", "Local2");
-            builder.setBolt("messageBoltLocal2_1", new SOEBolt(), 4).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
-            builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), 4).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
-            
-            builder.setBolt("messageBoltGlobal1_1A", new SOEBolt(), 4).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
-            builder.setBolt("messageBoltGlobal1_1B", new SOEBolt(), 4).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
-            builder.setBolt("messageBoltGlobal1_FG", new SOEBolt(), 2)
-            	.fieldsGrouping("messageBoltGlobal1_1A", new Fields("fieldValue"))
-            	.fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
-            	.addConfiguration("group-name", "Global1");
-            builder.setBolt("messageBoltGlobal1_GlobalResult", new SOEFinalBolt(), 2)
-            	.shuffleGrouping("messageBoltGlobal1_FG")
-            	.addConfiguration("group-name", "Global1");
 
-	        Config conf = new Config();
-	        conf.setDebug(_debug);
-	        conf.setNumWorkers(_numWorkers);
-	        conf.setNumAckers(_ackers);
-	        conf.setStatsSampleRate(_sampleRate);        
-	        if (_maxSpoutPending > 0) {
-	          conf.setMaxSpoutPending(_maxSpoutPending);
-        }
+        int totalSpout = _spoutParallel * _localGroup;
+        int totalLocalBolt = _boltLocalParallel * _localGroup;
+        int totalLocalResultBolt = _localGroup;
+        int totalGlobalBolt = _boltGlobalParallel;
+        int totalGlobalResultBolt = 1;
+
+        TopologyBuilder builder = new TopologyBuilder();
+
+        builder.setSpout("messageSpoutLocal1", new SOESpout(_messageSize, _ackEnabled), totalSpout).addConfiguration("group-name", "Local1");
+//        builder.setBolt("messageBoltLocal1_1", new SOEBolt(), totalLocalBolt).shuffleGrouping("messageSpoutLocal1").addConfiguration("group-name", "Local1");
+//        builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Local1");
+        builder.setBolt("messageBoltLocal1_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+        builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+
+        builder.setSpout("messageSpoutLocal2", new SOESpout(_messageSize, _ackEnabled), totalSpout).addConfiguration("group-name", "Local2");
+//        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).shuffleGrouping("messageSpoutLocal2").addConfiguration("group-name", "Local2");
+//        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Local2");
+        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+
+        builder.setBolt("messageBoltGlobal1_1A", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
+        builder.setBolt("messageBoltGlobal1_1B", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
+        builder.setBolt("messageBoltGlobal1_FG", new SOEBolt(), 2)
+          .fieldsGrouping("messageBoltGlobal1_1A", new Fields("fieldValue"))
+          .fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
+          .addConfiguration("group-name", "Global1");
+        builder.setBolt("messageBoltGlobal1_GlobalResult", new SOEFinalBolt(), totalGlobalResultBolt)
+          .shuffleGrouping("messageBoltGlobal1_FG")
+          .addConfiguration("group-name", "Global1");
+
+        Config conf = new Config();
+        conf.setDebug(_debug);
+        conf.setNumWorkers(_numWorkers);
+        conf.setNumAckers(_ackers);
+        conf.setStatsSampleRate(_sampleRate);
+        if (_maxSpoutPending > 0) {
+          conf.setMaxSpoutPending(_maxSpoutPending);
+      }
 
         StormSubmitter.submitTopology(_name+"_"+topoNum, conf, builder.createTopology());
       }

@@ -3,6 +3,12 @@
   <groupId>StormOnEdge-Example</groupId>
   <artifactId>StormOnEdge-Example</artifactId>
   <version>Topology-0.0.1</version>
+    <repositories>
+	<repository>
+		<id>jitpack.io</id>
+		<url>https://jitpack.io</url>
+	</repository>
+    </repositories>
   <dependencies>
   	<dependency>
   		<groupId>org.clojure</groupId>
@@ -19,5 +25,10 @@
   		<artifactId>args4j</artifactId>
   		<version>2.0.16</version>
   	</dependency>
+    <dependency>
+        <groupId>com.github.Telolets</groupId>
+        <artifactId>StormOnEdge</artifactId>
+        <version>master-SNAPSHOT</version>
+    </dependency>
   </dependencies>
 </project>

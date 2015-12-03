@@ -29,7 +29,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import NetworkEvaluation.*;
-import zoneGrouping.ZoneShuffleGrouping;
+import grouping.stream.*;
 
 import java.util.HashMap;
 import java.util.Map;
