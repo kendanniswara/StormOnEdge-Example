@@ -24,7 +24,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
-import grouping.stream.*;
+import StormOnEdge.grouping.stream.*;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
@@ -307,17 +307,17 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
         builder.setBolt("messageBoltLocal1_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
         builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
 
-        builder.setSpout("messageSpoutLocal2", new SOESpout(_messageSize, _ackEnabled), totalSpout).addConfiguration("group-name", "Local2");
+//        builder.setSpout("messageSpoutLocal2", new SOESpout(_messageSize, _ackEnabled), totalSpout).addConfiguration("group-name", "Local2");
 //        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).shuffleGrouping("messageSpoutLocal2").addConfiguration("group-name", "Local2");
 //        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Local2");
-        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
-        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+//        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+//        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
 
         builder.setBolt("messageBoltGlobal1_1A", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
-        builder.setBolt("messageBoltGlobal1_1B", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
+//        builder.setBolt("messageBoltGlobal1_1B", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
         builder.setBolt("messageBoltGlobal1_FG", new SOEBolt(), 2)
           .fieldsGrouping("messageBoltGlobal1_1A", new Fields("fieldValue"))
-          .fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
+//          .fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
           .addConfiguration("group-name", "Global1");
         builder.setBolt("messageBoltGlobal1_GlobalResult", new SOEFinalBolt(), totalGlobalResultBolt)
           .shuffleGrouping("messageBoltGlobal1_FG")

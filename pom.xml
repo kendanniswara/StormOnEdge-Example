@@ -28,7 +28,7 @@
     <dependency>
         <groupId>com.github.Telolets</groupId>
         <artifactId>StormOnEdge</artifactId>
-        <version>master-SNAPSHOT</version>
+        <version>-SNAPSHOT</version>
     </dependency>
   </dependencies>
 </project>
