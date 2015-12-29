@@ -15,7 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package KMeansStreaming;
+package StreamingKMeans;
+import StreamingKMeans.util.Feature;
+
 import java.util.List;
 
 public interface Clusterer {
@@ -26,7 +28,7 @@ public interface Clusterer {
    * @param features
    * @return
    */
-  Integer classify(double[] features);
+  Integer classify(Feature features);
 
   /**
    * Updates clusters with a given sample and return classification.
@@ -41,7 +43,7 @@ public interface Clusterer {
    *
    * @return
    */
-  double[][] getCentroids();
+  List<Feature> getCentroids();
 
   void reset();
 }

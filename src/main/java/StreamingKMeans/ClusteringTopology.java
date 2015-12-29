@@ -1,4 +1,4 @@
-package KMeansStreaming;
+package StreamingKMeans;
 
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
@@ -45,28 +45,20 @@ public class ClusteringTopology {
   @Option(name="--debug", aliases={"-d"}, usage="enable debug")
   private boolean _debug = false;
 
-  @Option(name="--numTopologies", aliases={"-n"}, metaVar="TOPOLOGIES",
-      usage="number of topologies to run in parallel")
-  private int _numTopologies = 1;
-
-  @Option(name="--ClusterGroup", aliases={"--clusterGroup"}, metaVar="CLUSTERGROUP",
-          usage="Number of cluster")
-  private int _clusterGroup = 4;
-
   @Option(name="--localTaskGroup", aliases={"--localGroup"}, metaVar="LOCALGROUP",
-          usage="number of bolts to run local TaskGroup")
-  private int _localGroup = 1;
+          usage="number of initial local TaskGroup")
+  private int _localGroup = 2;
 
   @Option(name="--spoutParallel", aliases={"--spout"}, metaVar="SPOUT",
-      usage="number of spouts to run local TaskGroup")
+          usage="number of spouts to run local TaskGroup")
   private int _spoutParallel = 2;
 
   @Option(name="--boltParallelLocal", aliases={"--boltLocal"}, metaVar="BOLTLOCAL",
-      usage="number of bolts to run local TaskGroup")
+          usage="number of bolts to run local TaskGroup")
   private int _boltLocalParallel = 2;
 
   @Option(name="--boltParallelGlobal", aliases={"--boltGlobal"}, metaVar="BOLTGLOBAL",
-          usage="number of bolts to run local TaskGroup")
+          usage="number of bolts to run global TaskGroup")
   private int _boltGlobalParallel = 2;
 
   @Option(name="--numWorkers", aliases={"--workers"}, metaVar="WORKERS",
@@ -269,8 +261,7 @@ public boolean metrics(Client client, long now, MetricsState state, String messa
       _ackers = 0;
     }
 
-    try {    	
-    	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
+    try {
 
         int totalSpout = _spoutParallel * _localGroup;
         int totalLocalBolt = _boltLocalParallel * _localGroup;
@@ -278,11 +269,15 @@ public boolean metrics(Client client, long now, MetricsState state, String messa
         int totalGlobalBolt = _boltGlobalParallel;
         int totalGlobalResultBolt = 1;
 
+        int _clusteringGroupSize = 4;
+        double _clusteringErrorRate = 0.2;
+        long _expireTime = 5000;
+
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout("KmeansSpout", new ClusteringSpout(_ackEnabled), totalSpout).addConfiguration("group-name", "local1");
 
-        builder.setBolt("ClusteringBoltLocal", new ClusteringBoltLocal(_clusterGroup,_ackEnabled), totalLocalBolt)
+        builder.setBolt("ClusteringBoltLocal", new ClusteringBoltLocal(_clusteringGroupSize, _clusteringErrorRate, _expireTime, _ackEnabled), totalLocalBolt)
                 .customGrouping("KmeansSpout", new ZoneShuffleGrouping())
                 .addConfiguration("group-name", "local1");
 
@@ -290,7 +285,7 @@ public boolean metrics(Client client, long now, MetricsState state, String messa
                 .customGrouping("ClusteringBoltLocal", new ZoneShuffleGrouping())
                 .addConfiguration("group-name", "local1");
 
-        builder.setBolt("ClusteringBoltGlobal", new ClusteringBoltGlobal(_clusterGroup,_ackEnabled), totalGlobalBolt)
+        builder.setBolt("ClusteringBoltGlobal", new ClusteringBoltGlobal(_clusteringGroupSize,_clusteringErrorRate, -1, _ackEnabled), totalGlobalBolt)
                 .customGrouping("ClusteringBoltLocal", new ZoneShuffleGrouping())
                 .addConfiguration("group-name", "global1");
 
@@ -298,29 +293,27 @@ public boolean metrics(Client client, long now, MetricsState state, String messa
                 .shuffleGrouping("ClusteringBoltGlobal")
                 .addConfiguration("group-name", "global1");
 
+        Config conf = new Config();
+        conf.setDebug(_debug);
+        conf.setNumWorkers(_numWorkers);
+        conf.setNumAckers(_ackers);
+        conf.setStatsSampleRate(_sampleRate);
 
-	        Config conf = new Config();
-	        conf.setDebug(_debug);
-	        conf.setNumWorkers(_numWorkers);
-	        conf.setNumAckers(_ackers);
-	        conf.setStatsSampleRate(_sampleRate);
+        StormSubmitter.submitTopology(_name, conf, builder.createTopology());
 
-        StormSubmitter.submitTopology(_name+"_"+topoNum, conf, builder.createTopology());
-      }
       metrics(client, _pollFreqSec, _testRunTimeSec);
+
     } finally {
       //Kill it right now!!!
       KillOptions killOpts = new KillOptions();
       killOpts.set_wait_secs(0);
 
-      for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
-        LOG.info("KILLING "+_name+"_"+topoNum);
+        LOG.info("KILLING "+_name);
         try {
-          client.killTopologyWithOpts(_name+"_"+topoNum, killOpts);
+          client.killTopologyWithOpts(_name, killOpts);
         } catch (Exception e) {
-          LOG.error("Error tying to kill "+_name+"_"+topoNum,e);
+          LOG.error("Error tying to kill "+_name,e);
         }
-      }
     }
   }
   

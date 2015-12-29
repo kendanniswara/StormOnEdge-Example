@@ -1,4 +1,4 @@
-package KMeansStreaming;
+package StreamingKMeans;
 
 /**
  * Copyright 2013-2015 Pierre Merienne
@@ -16,7 +16,7 @@ package KMeansStreaming;
  * limitations under the License.
  */
 
-import KMeansStreaming.util.MathUtil;
+import StreamingKMeans.util.MathUtil;
 
 import java.io.Serializable;
 import java.util.ArrayList;

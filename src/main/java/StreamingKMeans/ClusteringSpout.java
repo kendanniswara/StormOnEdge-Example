@@ -1,11 +1,14 @@
-package KMeansStreaming;
+package StreamingKMeans;
 
+import StreamingKMeans.util.Feature;
 import backtype.storm.spout.SpoutOutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Random;
@@ -19,19 +22,18 @@ public class ClusteringSpout extends BaseRichSpout {
   private String cloudID;
   private int sleepTime;
   private Random random;
-  private Values value;
+
   private Map stormConf;
   private final String cloudNameKey = "cloud-name";
-  double[] feature;
+
+  private static final Logger LOG = LoggerFactory.getLogger(ClusteringSpout.class);
 
   public ClusteringSpout(boolean ackEnabled) {
     sleepTime = 2;
     random = new Random();
   }
 
-  public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    declarer.declare(new Fields("cloudID", "feature"));
-  }
+
 
   public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
     stormConf = conf;
@@ -41,21 +43,24 @@ public class ClusteringSpout extends BaseRichSpout {
 
   public void nextTuple() {
 
-    value = new Values();
-    feature = new double[2];
+    Values value = new Values();
+    double[] feature = new double[2];
 
     feature[0] = random.nextDouble();
     feature[1] = random.nextDouble();
 
-    value.add(cloudID);
-    value.add(feature);
+    value.add(new Feature(feature, cloudID));
 
     _collector.emit(value);
 
-    //sleep for 2 seconds
+    //sleep for X seconds
     try {
       Thread.sleep(sleepTime, 0);
-    } catch(Exception e) { }
+    } catch(Exception e) { LOG.error(e.getMessage()); }
+  }
+
+  public void declareOutputFields(OutputFieldsDeclarer declarer) {
+    declarer.declare(new Fields("feature"));
   }
 
   @Override

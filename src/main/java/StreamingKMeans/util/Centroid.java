@@ -1,14 +1,14 @@
-package KMeansStreaming.util;
+package StreamingKMeans.util;
 
 /**
  * Created by ken on 11/18/2015.
  */
 public class Centroid
 {
-  public double[] feature;
+  public Feature feature;
   public int counts;
 
-  public Centroid(double[] feature) {
+  public Centroid(Feature feature) {
     this.feature = feature;
     counts = 0;
   }

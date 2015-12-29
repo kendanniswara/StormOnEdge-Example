@@ -1,4 +1,4 @@
-package KMeansStreaming;
+package StreamingKMeans;
 
 import backtype.storm.topology.BasicOutputCollector;
 import backtype.storm.topology.OutputFieldsDeclarer;
