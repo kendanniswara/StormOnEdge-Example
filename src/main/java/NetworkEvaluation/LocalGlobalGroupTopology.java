@@ -53,9 +53,6 @@ public class LocalGlobalGroupTopology {
   @Option(name="--debug", aliases={"-d"}, usage="enable debug")
   private boolean _debug = false;
   
-  @Option(name="--local", usage="run in local mode")
-  private boolean _local = false;
-  
   @Option(name="--messageSizeByte", aliases={"--messageSize"}, metaVar="SIZE",
       usage="size of the messages generated in bytes")
   private int _messageSize = 100;
@@ -64,24 +61,20 @@ public class LocalGlobalGroupTopology {
       usage="number of topologies to run in parallel")
   private int _numTopologies = 1;
 
-  @Option(name="--ClusterGroup", aliases={"--clusterGroup"}, metaVar="CLUSTERGROUP",
-          usage="Number of cluster")
-  private int _clusterGroup = 4;
-
   @Option(name="--localTaskGroup", aliases={"--localGroup"}, metaVar="LOCALGROUP",
           usage="number of initial local TaskGroup")
   private int _localGroup = 9;
 
   @Option(name="--spoutParallel", aliases={"--spout"}, metaVar="SPOUT",
-          usage="number of spouts to run local TaskGroup")
+          usage="number of spouts to run inside a single TaskGroup")
   private int _spoutParallel = 2;
 
   @Option(name="--boltParallelLocal", aliases={"--boltLocal"}, metaVar="BOLTLOCAL",
-          usage="number of bolts to run local TaskGroup")
+          usage="number of bolts to run inside a single TaskGroup")
   private int _boltLocalParallel = 2;
 
   @Option(name="--boltParallelGlobal", aliases={"--boltGlobal"}, metaVar="BOLTGLOBAL",
-          usage="number of bolts to run global TaskGroup")
+          usage="number of global bolts to run inside a single TaskGroup")
   private int _boltGlobalParallel = 2;
   
   @Option(name="--numWorkers", aliases={"--workers"}, metaVar="WORKERS",
@@ -122,7 +115,6 @@ public class LocalGlobalGroupTopology {
   }
   
   private boolean printOnce = true;
-
 
   public void metrics(Nimbus.Client client, int size, int poll, int total) throws Exception {
     System.out.println("status\ttopologies\ttotalSlots\tslotsUsed\ttotalExecutors\texecutorsWithMetrics\ttime\ttime-diff ms\ttransferred\tthroughput (MB/s)");
@@ -195,7 +187,7 @@ public class LocalGlobalGroupTopology {
 	  System.out.println(executorBuilder.toString());
 }
 
-public boolean metrics(Nimbus.Client client, int size, long now, MetricsState state, String message) throws Exception {
+  public boolean metrics(Nimbus.Client client, int size, long now, MetricsState state, String message) throws Exception {
     ClusterSummary summary = client.getClusterInfo();
     long time = now - state.lastTime;
     state.lastTime = now;
@@ -250,7 +242,7 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
     state.transferred = totalTransferred;
     //double throughput = (transferredDiff == 0 || time == 0) ? 0.0 : (transferredDiff * size)/(1024.0 * 1024.0)/(time/1000.0);
     //System.out.println(message+"\t"+numTopologies+"\t"+totalSlots+"\t"+totalUsedSlots+"\t"+totalExecutors+"\t"+executorsWithMetrics+"\t"+now+"\t"+time+"\t"+transferredDiff+"\t"+throughput);
-	System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time+",NOLIMIT");
+	System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time);
     if("WAITING".equals(message)) {
       //System.err.println(" !("+totalUsedSlots+" > 0 && "+slotsUsedDiff+" == 0 && "+totalExecutors+" > 0 && "+executorsWithMetrics+" >= "+totalExecutors+")");
     }
@@ -293,32 +285,48 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
     try {    	
     	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
 
-        int totalSpout = _spoutParallel * _localGroup;
-        int totalLocalBolt = _boltLocalParallel * _localGroup;
-        int totalLocalResultBolt = _localGroup;
-        int totalGlobalBolt = _boltGlobalParallel;
-        int totalGlobalResultBolt = 1;
+        int multiplier = 4;
+        int totalSpout = _spoutParallel * _localGroup * multiplier;
+        int totalLocalBolt = _boltLocalParallel * _localGroup * multiplier;
+        int totalLocalResultBolt = _localGroup * multiplier;
+        int totalGlobalBolt = _boltGlobalParallel * multiplier;
+        int totalGlobalResultBolt = _boltGlobalParallel * multiplier;
 
         TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("messageSpoutLocal1", new SOESpout(_messageSize, _ackEnabled), totalSpout).addConfiguration("group-name", "Local1");
+        builder.setSpout("messageSpoutLocal1", new SOESpout(_messageSize, _ackEnabled), totalSpout)
+                .addConfiguration("group-name", "Local1")
+                .addConfiguration("TaskPerCloud", _spoutParallel);
 //        builder.setBolt("messageBoltLocal1_1", new SOEBolt(), totalLocalBolt).shuffleGrouping("messageSpoutLocal1").addConfiguration("group-name", "Local1");
 //        builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Local1");
-        builder.setBolt("messageBoltLocal1_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
-        builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+        builder.setBolt("messageBoltLocal1_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping())
+                .addConfiguration("group-name", "Local1")
+                .addConfiguration("TaskPerCloud", _boltLocalParallel);
+        builder.setBolt("messageBoltLocal1_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping())
+                .addConfiguration("group-name", "Local1");
 
-//        builder.setSpout("messageSpoutLocal2", new SOESpout(_messageSize, _ackEnabled), totalSpout).addConfiguration("group-name", "Local2");
+        builder.setSpout("messageSpoutLocal2", new SOESpout(_messageSize, _ackEnabled), totalSpout)
+                .addConfiguration("group-name", "Local2")
+                .addConfiguration("TaskPerCloud", _spoutParallel);
 //        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).shuffleGrouping("messageSpoutLocal2").addConfiguration("group-name", "Local2");
 //        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Local2");
-//        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
-//        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+        builder.setBolt("messageBoltLocal2_1", new SOEBolt(), totalLocalBolt).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping())
+                .addConfiguration("group-name", "Local2")
+                .addConfiguration("TaskPerCloud", _boltLocalParallel);
+        builder.setBolt("messageBoltLocal2_LocalResult", new SOEFinalBolt(), totalLocalResultBolt).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping())
+                .addConfiguration("group-name", "Local2");
 
-        builder.setBolt("messageBoltGlobal1_1A", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
-//        builder.setBolt("messageBoltGlobal1_1B", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
+        builder.setBolt("messageBoltGlobal1_1A", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal1_1")
+                .addConfiguration("group-name", "Global1")
+                .addConfiguration("TaskPerCloud", _boltGlobalParallel);
+        builder.setBolt("messageBoltGlobal1_1B", new SOEBolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal2_1")
+                .addConfiguration("group-name", "Global1")
+                .addConfiguration("TaskPerCloud", _boltGlobalParallel);
         builder.setBolt("messageBoltGlobal1_FG", new SOEBolt(), 2)
           .fieldsGrouping("messageBoltGlobal1_1A", new Fields("fieldValue"))
-//          .fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
-          .addConfiguration("group-name", "Global1");
+          .fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
+          .addConfiguration("group-name", "Global1")
+          .addConfiguration("TaskPerCloud", _boltGlobalParallel);
         builder.setBolt("messageBoltGlobal1_GlobalResult", new SOEFinalBolt(), totalGlobalResultBolt)
           .shuffleGrouping("messageBoltGlobal1_FG")
           .addConfiguration("group-name", "Global1");
@@ -345,7 +353,7 @@ public boolean metrics(Nimbus.Client client, int size, long now, MetricsState st
         try {
           client.killTopologyWithOpts(_name+"_"+topoNum, killOpts);
         } catch (Exception e) {
-          LOG.error("Error tying to kill "+_name+"_"+topoNum,e);
+          LOG.error("Error trying to kill "+_name+"_"+topoNum,e);
         }
       }
     }
